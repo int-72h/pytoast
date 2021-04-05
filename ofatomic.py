@@ -1,11 +1,13 @@
-import urllib.request, sqlite3
-from zstd import decompress
-from os import path, stat, makedirs
-from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA384
-from sys import argv, exit
 from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
 from multiprocessing import Pool
+from os import path, stat, makedirs
+from os import sched_getaffinity
+from sys import argv, exit
+import sqlite3
+import urllib.request
+from zstd import decompress
 
 global prefix
 global key
@@ -15,23 +17,20 @@ global url
 signing = True
 hashing = True
 prefix = ''
-nproc = 4
+nproc = len(sched_getaffinity(0))
+keyfile = "ofpublic.pem"
 url = 'https://svn.openfortress.fun/launcher/files/'
-help = "ofatomic -k file [-p .] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]\n" \
-       "Minimal Launcher/installer for Open Fortress.\n" \
-       "-p Choose desired path for installation. Default is the directory this script is located in.\n" \
-       "-k Specify public key file to verify signatures against.\n" \
-       "--disable-hashing Disables hash checking when downloading.\n" \
-       "--disable-signing Disables signature checking when downloading.\n" \
-       "-n Amount of threads to be used - choose 1 to disable multithreading. Default is 4.\n" \
-       "-u Specifies URL to download from. Specify the protocol (https:// or http://) as well."
+uhelp = """Usage: ofatomic -k file [-p (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] \
+[--disable-signing]
+Command line launcher/installer for Open Fortress.
+  -p: Choose desired path for installation. Default is the directory this script is located in.
+  -k: Specify public key file to verify signatures against. Default is the current OF public key (ofpublic.pem).
+  -n: Amount of threads to be used - choose 1 to disable multithreading. Default is the number of threads in the system.
+  -u: Specifies URL to download from. Specify the protocol (https:// or http://) as well. Default is the OF repository.
+  --disable-hashing: Disables hash checking when downloading.
+  --disable-signing: Disables signature checking when downloading."""
 if '-k' in argv:
     keyfile = argv[argv.index('-k') + 1]
-    key = RSA.import_key(open(keyfile).read())
-else:
-    print("No key file specified!")
-    print(help)
-    exit(256)
 if '-p' in argv:
     prefix = argv[argv.index('-k') + 1]
     if prefix[-1:] != '/':
@@ -47,8 +46,9 @@ if '-u' in argv:
     if url[-1:] != '/':
         url += '/'
 if '-h' in argv:
-    print(help)
+    print(uhelp)
     exit(1)
+key = RSA.import_key(open(keyfile).read())
 
 
 def download_db(path):
