@@ -3,35 +3,57 @@ from zstd import decompress
 from os import path, stat, makedirs
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA384
-from sys import argv,exit
+from sys import argv, exit
 from Crypto.PublicKey import RSA
 from multiprocessing import Pool
 
 global prefix
 global key
+global signing
+global hashing
+global url
+signing = True
+hashing = True
+prefix = ''
 nproc = 4
-help = "ofatomic -p . -k file [-n 4] [--disable-hash] [--disable-signing]\n" \
+url = 'https://svn.openfortress.fun/launcher/files/'
+help = "ofatomic -k file [-p .] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]\n" \
        "Minimal Launcher/installer for Open Fortress.\n" \
        "-p Choose desired path for installation. Default is the directory this script is located in.\n" \
-       "NOTE: Do not specify trailing slash!\n" \
        "-k Specify public key file to verify signatures against.\n" \
-       "--disable-hash Disables hash checking when downloading.\n" \
-       "-n Amount of threads to be used - choose 1 to disable multithreading. Default is 4."
+       "--disable-hashing Disables hash checking when downloading.\n" \
+       "--disable-signing Disables signature checking when downloading.\n" \
+       "-n Amount of threads to be used - choose 1 to disable multithreading. Default is 4.\n" \
+       "-u Specifies URL to download from. Specify the protocol (https:// or http://) as well."
 if '-k' in argv:
     keyfile = argv[argv.index('-k') + 1]
     key = RSA.import_key(open(keyfile).read())
 else:
     print("No key file specified!")
+    print(help)
     exit(256)
 if '-p' in argv:
-    prefix = argv[argv.index('-k') + 1] + '/'
+    prefix = argv[argv.index('-k') + 1]
+    if prefix[-1:] != '/':
+        prefix = prefix + '/'
 if '-n' in argv:
     nproc = int(argv[argv.index('-n') + 1])
+if '--disable-hashing' in argv:
+    hashing = False
+if '--disable-signing' in argv:
+    signing = False
+if '-u' in argv:
+    url = argv[argv.index('-u') + 1]
+    if url[-1:] != '/':
+        url += '/'
+if '-h' in argv:
+    print(help)
+    exit(1)
 
 
 def download_db(path):
-    req = "https://svn.openfortress.fun/launcher/files/ofmanifest.db"
-    req_sig = "https://svn.openfortress.fun/launcher/files/ofmanifest.db"
+    req = url + "ofmanifest.db"
+    req_sig = url + "ofmanifest.sig"
     r = urllib.request.Request(req, headers={'User-Agent': 'Mozilla/5.0'})
     rs = urllib.request.Request(req_sig, headers={'User-Agent': 'Mozilla/5.0'})
     print("downloading db...")
@@ -40,7 +62,7 @@ def download_db(path):
     mfhash = SHA384.new(memfile)
     pkcs1_15.new(key).verify(mfhash, sig)
     makedirs(path, exist_ok=True)
-    f = open(path, 'wb')
+    f = open(path + "/ofmanifest.db", 'wb')
     f.write(memfile)
     f.close()
     print("done!")
@@ -50,25 +72,24 @@ def download_file_multi(arr):
     filename = arr[0]
     hash = arr[1]
     sig = arr[2]
-    req = "https://svn.openfortress.fun/launcher/files/{}".format(filename)
+    req = url + filename
     print(req)
     r = urllib.request.Request(req, headers={'User-Agent': 'Mozilla/5.0'})
     u = urllib.request.urlopen(r)
     if '/' in filename:
         spath = prefix + filename[:filename.rfind('/')]
         makedirs(spath, exist_ok=True)
-    f = open(filename, 'wb')
     memfile = u.read()
     u.close()
     if memfile:
         memfile = decompress(memfile)
     new_hash = SHA384.new(memfile)
-    if new_hash.hexdigest() != hash:
+    if new_hash.hexdigest() != hash and hashing == True:
         raise ArithmeticError("HASH INVALID for file {}".format(filename))
-    print("Hash valid!")
-    if sig:
+    if sig and signing == True:
         pkcs1_15.new(key).verify(new_hash, sig)
         print("Signature valid!")
+    f = open(filename, 'wb')
     f.write(memfile)
     f.close()
     print("done!")
@@ -83,7 +104,7 @@ try:
         raise sqlite3.OperationalError
 except sqlite3.OperationalError:
     makedirs("launcher/remote", exist_ok=True)
-    download_db("launcher/remote/ofmanifest.db")
+    download_db("launcher/remote")
     conn = sqlite3.connect('file:launcher/remote/ofmanifest.db', uri=True)
     c = conn.cursor()
 
@@ -100,6 +121,7 @@ except sqlite3.OperationalError:
     conn_l = sqlite3.connect('launcher/local/ofmanifest.db')
     cl = conn_l.cursor()
     nolocal = True
+
 c.execute("select path,checksum,signature from files")
 remote = c.fetchall()
 todl = []
