@@ -1,9 +1,8 @@
 from Crypto.Hash import SHA384
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
-from multiprocessing import Pool
+from multiprocessing import Pool,cpu_count
 from os import path, stat, makedirs
-from os import sched_getaffinity
 from sys import argv, exit
 import sqlite3
 import urllib.request
@@ -17,7 +16,7 @@ global url
 signing = True
 hashing = True
 prefix = ''
-nproc = len(sched_getaffinity(0))
+nproc = cpu_count()
 keyfile = "ofpublic.pem"
 url = 'https://svn.openfortress.fun/launcher/files/'
 uhelp = """Usage: ofatomic -k file [-p (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] \
