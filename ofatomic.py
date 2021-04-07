@@ -19,35 +19,6 @@ prefix = ''
 nproc = cpu_count()
 keyfile = "ofpublic.pem"
 url = 'https://svn.openfortress.fun/launcher/files/'
-uhelp = """Usage: ofatomic -k file [-p (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] \
-[--disable-signing]
-Command line launcher/installer for Open Fortress.
-  -p: Choose desired path for installation. Default is the directory this script is located in.
-  -k: Specify public key file to verify signatures against. Default is the current OF public key (ofpublic.pem).
-  -n: Amount of threads to be used - choose 1 to disable multithreading. Default is the number of threads in the system.
-  -u: Specifies URL to download from. Specify the protocol (https:// or http://) as well. Default is the OF repository.
-  --disable-hashing: Disables hash checking when downloading.
-  --disable-signing: Disables signature checking when downloading."""
-if '-k' in argv:
-    keyfile = argv[argv.index('-k') + 1]
-if '-p' in argv:
-    prefix = argv[argv.index('-k') + 1]
-    if prefix[-1:] != '/':
-        prefix = prefix + '/'
-if '-n' in argv:
-    nproc = int(argv[argv.index('-n') + 1])
-if '--disable-hashing' in argv:
-    hashing = False
-if '--disable-signing' in argv:
-    signing = False
-if '-u' in argv:
-    url = argv[argv.index('-u') + 1]
-    if url[-1:] != '/':
-        url += '/'
-if '-h' in argv:
-    print(uhelp)
-    exit(1)
-key = RSA.import_key(open(keyfile).read())
 
 
 def download_db(path):
@@ -94,49 +65,79 @@ def download_file_multi(arr):
     print("done!")
 
 
-try:
-    conn = sqlite3.connect('file:launcher/remote/ofmanifest.db', uri=True)
-    c = conn.cursor()
-    if not path.exists('launcher/remote/ofmanifest.db'):
-        raise sqlite3.OperationalError
-    elif stat('launcher/remote/ofmanifest.db').st_size == 0:
-        raise sqlite3.OperationalError
-except sqlite3.OperationalError:
-    makedirs("launcher/remote", exist_ok=True)
-    download_db("launcher/remote")
-    conn = sqlite3.connect('file:launcher/remote/ofmanifest.db', uri=True)
-    c = conn.cursor()
-
-try:
-    conn_l = sqlite3.connect('file:launcher/local/ofmanifest.db', uri=True)
-    cl = conn_l.cursor()
-    nolocal = False
-    if not path.exists('launcher/local/ofmanifest.db'):
-        raise sqlite3.OperationalError
-    elif stat('launcher/local/ofmanifest.db').st_size == 0:
-        raise sqlite3.OperationalError
-except sqlite3.OperationalError:
-    makedirs("launcher/local", exist_ok=True)
-    conn_l = sqlite3.connect('launcher/local/ofmanifest.db')
-    cl = conn_l.cursor()
-    nolocal = True
-
-c.execute("select path,checksum,signature from files")
-remote = c.fetchall()
-todl = []
-if nolocal:
-    todl = remote
-else:
-    print("getting local")
-    local = cl.execute("select path,checksum,signature from files").fetchall()
-    for f in remote:
-        if f[1] not in local:
-            todl.append(f)
-dpool = Pool(nproc)
-dpool.map(download_file_multi, todl)
-cl.execute('ATTACH DATABASE "launcher/remote/ofmanifest.db" AS remote')
-cl.execute('INSERT OR REPLACE INTO files SELECT * FROM remote.files')
-conn_l.commit()
-conn_l.close()
-conn.close()
-print("Done!")
+if __name__ == '__main__':
+	uhelp = """Usage: ofatomic -k file [-p (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]
+Command line launcher/installer for Open Fortress.
+  -p: Choose desired path for installation. Default is the directory this script is located in.
+  -k: Specify public key file to verify signatures against. Default is the current OF public key (ofpublic.pem).
+  -n: Amount of threads to be used - choose 1 to disable multithreading. Default is the number of threads in the system.
+  -u: Specifies URL to download from. Specify the protocol (https:// or http://) as well. Default is the OF repository.
+  --disable-hashing: Disables hash checking when downloading.
+  --disable-signing: Disables signature checking when downloading."""
+	if '-k' in argv:
+	    keyfile = argv[argv.index('-k') + 1]
+	if '-p' in argv:
+	    prefix = argv[argv.index('-k') + 1]
+	    if prefix[-1:] != '/':
+	        prefix = prefix + '/'
+	if '-n' in argv:
+	    nproc = int(argv[argv.index('-n') + 1])
+	if '--disable-hashing' in argv:
+	    hashing = False
+	if '--disable-signing' in argv:
+	    signing = False
+	if '-u' in argv:
+	    url = argv[argv.index('-u') + 1]
+	    if url[-1:] != '/':
+	        url += '/'
+	if '-h' in argv:
+	    print(uhelp)
+	    exit(1)
+	key = RSA.import_key(open(keyfile).read())
+	try:
+	    conn = sqlite3.connect('file:launcher/remote/ofmanifest.db', uri=True)
+	    c = conn.cursor()
+	    if not path.exists('launcher/remote/ofmanifest.db'):
+	        raise sqlite3.OperationalError
+	    elif stat('launcher/remote/ofmanifest.db').st_size == 0:
+	        raise sqlite3.OperationalError
+	except sqlite3.OperationalError:
+	    makedirs("launcher/remote", exist_ok=True)
+	    download_db("launcher/remote")
+	    conn = sqlite3.connect('file:launcher/remote/ofmanifest.db', uri=True)
+	    c = conn.cursor()
+	
+	try:
+	    conn_l = sqlite3.connect('file:launcher/local/ofmanifest.db', uri=True)
+	    cl = conn_l.cursor()
+	    nolocal = False
+	    if not path.exists('launcher/local/ofmanifest.db'):
+	        raise sqlite3.OperationalError
+	    elif stat('launcher/local/ofmanifest.db').st_size == 0:
+	        raise sqlite3.OperationalError
+	except sqlite3.OperationalError:
+	    makedirs("launcher/local", exist_ok=True)
+	    conn_l = sqlite3.connect('launcher/local/ofmanifest.db')
+	    cl = conn_l.cursor()
+	    nolocal = True
+	
+	c.execute("select path,checksum,signature from files")
+	remote = c.fetchall()
+	todl = []
+	if nolocal:
+	    todl = remote
+	else:
+	    print("getting local")
+	    local = cl.execute("select path,checksum,signature from files").fetchall()
+	    for f in remote:
+	        if f[1] not in local:
+	            todl.append(f)
+	dpool = Pool(nproc)
+	dpool.map(download_file_multi, todl)
+	cl.execute('ATTACH DATABASE "launcher/remote/ofmanifest.db" AS remote')
+	cl.execute('INSERT OR REPLACE INTO files SELECT * FROM remote.files')
+	conn_l.commit()
+	conn_l.close()
+	conn.close()
+	print("Done!")
+	
