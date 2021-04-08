@@ -43,15 +43,16 @@ def download_db(path):
 
 def download_file_multi(arr):
     global prefix
-    filename = arr[0]
+    filename = Path(arr[0])
     hash = arr[1]
     sig = arr[2]
-    req = url + filename
+    req = url + str(filename)
+    path = prefix / filename
     print(req)
     r = urllib.request.Request(req, headers={'User-Agent': 'Mozilla/5.0'})
     u = urllib.request.urlopen(r)
-    if '/' in filename:
-        spath = prefix + filename[:filename.rfind('/')]
+    if str(filename.parents[0]) != '.':
+        spath = path.parents[0]
         makedirs(spath, exist_ok=True)
     memfile = u.read()
     u.close()
@@ -64,7 +65,7 @@ def download_file_multi(arr):
         global key
         pkcs1_15.new(key).verify(new_hash, sig)
         print("Signature valid!")
-    f = open(filename, 'wb')
+    f = open(path, 'wb')
     f.write(memfile)
     f.close()
     print("File download complete!")
@@ -116,7 +117,7 @@ def main():
         makedirs(rpath.parents[0], exist_ok=True)
         download_db(rpath.parents[0])
     conn = sqlite3.connect('file:{}'.format(rpath), uri=True)
-    if not (lpath.exists() and lpath.st_size > 0):
+    if not (lpath.exists() and lpath.stat().st_size > 0):
         makedirs(lpath.parents[0], exist_ok=True)
         nolocal = True
     else:
@@ -133,7 +134,7 @@ def main():
         local = cl.execute("select path,checksum,signature from files").fetchall()
         for f in remote:
             if f[1] not in local:
-                todl.append([Path(f[0]), f[1], f[2]])
+                todl.append(f)
     dpool = Pool(nproc)
     dpool.map(download_file_multi, todl)
     cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
