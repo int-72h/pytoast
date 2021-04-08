@@ -8,7 +8,7 @@ from sys import argv, exit
 import sqlite3
 import urllib.request
 from zstd import decompress
-from pathlib import Path
+from pathlib import Path,PurePosixPath
 
 global prefix
 global key
@@ -41,12 +41,13 @@ def download_db(path):
     print("done!")
 
 
-def download_file_multi(arr):
-    global prefix
+def download_file_multi(arr_p):
+    prefix = arr_p[1]
+    arr = arr_p[0]
     filename = Path(arr[0])
     hash = arr[1]
     sig = arr[2]
-    req = url + str(filename)
+    req = url + str(PurePosixPath(filename))
     path = prefix / filename
     print(req)
     r = urllib.request.Request(req, headers={'User-Agent': 'Mozilla/5.0'})
@@ -62,10 +63,10 @@ def download_file_multi(arr):
     if new_hash.hexdigest() != hash and hashing == True:
         raise ArithmeticError("HASH INVALID for file {}".format(filename))
     if sig and signing == True:
-        global key
         pkcs1_15.new(key).verify(new_hash, sig)
         print("Signature valid!")
     f = open(path, 'wb')
+    print(path)
     f.write(memfile)
     f.close()
     print("File download complete!")
@@ -129,12 +130,12 @@ def main():
     remote = c.fetchall()
     todl = []
     if nolocal:
-        todl = remote
+        todl = [[f,str(prefix)] for f in remote]
     else:
         local = cl.execute("select path,checksum,signature from files").fetchall()
         for f in remote:
             if f[1] not in local:
-                todl.append(f)
+                todl.append([f,str(prefix)])
     dpool = Pool(nproc)
     dpool.map(download_file_multi, todl)
     cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
