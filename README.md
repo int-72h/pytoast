@@ -12,10 +12,13 @@ PRs are welcome.
 
 ## "Basic" Install instructions
 
-* Download this repo and place it wherever you want the files to be.
-* Install `pycryptodome` and `zstd` from pip.
-* run `ofatomic.py`.
-* Wait for it to finish.
+Install instructions are like any other local pip package using `setup.py`:
+
+* Download this repo.
+* run `python setup.py install`.
+* Now, if pip scripts are in your path, simply running `ofatomic` will invoke the script.
+
+> Note: on Windows, trying to Ctrl-C out of it whilst it's running appears to not play well with multiprocessing, unlike on Unix-like systems.
 
 Note that these instructions just download the OF files - you will need to still follow the official guide for the rest of the steps prior and after you would normally use SVN for.
 
