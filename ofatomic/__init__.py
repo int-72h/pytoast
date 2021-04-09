@@ -64,7 +64,7 @@ def download_file_multi(arr_p):
     if new_hash.hexdigest() != hash and hashing == True:
         raise ArithmeticError("HASH INVALID for file {}".format(filename))
     if sig and signing == True:
-        keydata = Path(arr_p[2])
+        keydata = arr_p[2]
         key = RSA.import_key(keydata)
         pkcs1_15.new(key).verify(new_hash, sig)
         print("Signature valid!")
@@ -140,7 +140,7 @@ def main():
     if nolocal:
         for f in remote:
             if f[2]:
-                todl.append([f, str(prefix), str(keydata)])
+                todl.append([f, str(prefix), keydata])
             else:
                 todl.append([f, str(prefix)])
     else:
