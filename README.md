@@ -25,9 +25,9 @@ Note that these instructions just download the OF files - you will need to still
 
 Here's the usage from the file for those wanting to customise/automate the install.
 ```
-Usage: ofatomic -k file [-p (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]
+Usage: ofatomic -p . [-k (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]
 Command line launcher/installer for Open Fortress.
-  -p: Choose desired path for installation. Default is the directory this script is located in.
+  -p: Choose desired path for installation. Mandatory.
   -k: Specify public key file to verify signatures against. Default is the current OF public key (ofpublic.pem).
   -n: Amount of threads to be used - choose 1 to disable multithreading. Default is the number of threads in the system.
   -u: Specifies URL to download from. Specify the protocol (https:// or http://) as well. Default is the OF repository.

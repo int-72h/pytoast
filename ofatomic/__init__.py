@@ -43,7 +43,6 @@ def download_db(path):
 
 
 def download_file_multi(arr_p):
-    keyfile = Path(arr_p[2])
     prefix = arr_p[1]
     arr = arr_p[0]
     filename = Path(arr[0])
@@ -65,7 +64,8 @@ def download_file_multi(arr_p):
     if new_hash.hexdigest() != hash and hashing == True:
         raise ArithmeticError("HASH INVALID for file {}".format(filename))
     if sig and signing == True:
-        key = RSA.import_key(open(keyfile).read())
+        keydata = Path(arr_p[2])
+        key = RSA.import_key(keydata)
         pkcs1_15.new(key).verify(new_hash, sig)
         print("Signature valid!")
     f = open(path, 'wb')
@@ -82,21 +82,28 @@ def argvparse():
     global hashing
     global url
     global nproc
-    uhelp = """Usage: ofatomic -k file [-p (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]
+    uhelp = """\
+Usage: ofatomic -p . [-k (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]
 Command line launcher/installer for Open Fortress.
-  -p: Choose desired path for installation. Default is the directory this script is located in.
+  -p: Choose desired path for installation. Mandatory.
   -k: Specify public key file to verify signatures against. Default is the current OF public key (ofpublic.pem).
   -n: Amount of threads to be used - choose 1 to disable multithreading. Default is the number of threads in the system.
   -u: Specifies URL to download from. Specify the protocol (https:// or http://) as well. Default is the OF repository.
   -h: Displays this help message.
   --disable-hashing: Disables hash checking when downloading.
   --disable-signing: Disables signature checking when downloading."""
+    if len(argv) == 1:
+        print(uhelp)
+        exit()
+    if '-h' in argv:
+        print(uhelp)
+        exit()
+    if '-p' in argv:
+        prefix = Path(argv[argv.index('-p') + 1])
     if '-k' in argv:
         keyfile = Path(argv[argv.index('-k') + 1])
     else:
         keyfile = Path("ofpublic.pem")
-    if '-p' in argv:
-        prefix = Path(argv[argv.index('-p') + 1])
     if '-n' in argv:
         nproc = int(argv[argv.index('-n') + 1])
     if '--disable-hashing' in argv:
@@ -107,12 +114,10 @@ Command line launcher/installer for Open Fortress.
         url = argv[argv.index('-u') + 1]
         if url[-1:] != '/':
             url += '/'
-    if '-h' in argv:
-        print(uhelp)
-        exit(1)
 
 
 def main():
+    global keyfile
     argvparse()
     rpath = prefix / Path('launcher/remote/ofmanifest.db')
     lpath = prefix / Path('launcher/local/ofmanifest.db')
@@ -131,13 +136,21 @@ def main():
     c.execute("select path,checksum,signature from files")
     remote = c.fetchall()
     todl = []
+    keydata = open(keyfile).read()
     if nolocal:
-        todl = [[f, str(prefix),str(keyfile)] for f in remote]
+        for f in remote:
+            if f[2]:
+                todl.append([f, str(prefix), str(keydata)])
+            else:
+                todl.append([f, str(prefix)])
     else:
         local = cl.execute("select path,checksum,signature from files").fetchall()
         for f in remote:
             if f[1] not in local:
-                todl.append([f, str(prefix),str(keyfile)])
+                if f[2]:
+                    todl.append([f, str(prefix), str(keydata)])
+                else:
+                    todl.append([f, str(prefix)])
     dpool = Pool(nproc)
     dpool.map(download_file_multi, todl)
     cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
@@ -145,4 +158,8 @@ def main():
     conn_l.commit()
     conn_l.close()
     conn.close()
+    with open("gameinfo.txt", 'r') as gd:
+        gd_l = open(prefix / Path("gameinfo.txt"), 'w')
+        gd_l.write(gd.read())
+        gd_l.close()
     print("OF download completed!")
