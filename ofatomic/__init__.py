@@ -8,10 +8,10 @@ from sys import argv, exit
 import sqlite3
 import urllib.request
 from zstd import decompress
-from pathlib import Path,PurePosixPath
+from pathlib import Path, PurePosixPath
 
 global prefix
-global key
+global keyfile
 global signing
 global hashing
 global url
@@ -24,7 +24,7 @@ url = 'https://svn.openfortress.fun/launcher/files/'
 
 
 def download_db(path):
-    global key
+    global keyfile
     req = url + "ofmanifest.db"
     req_sig = url + "ofmanifest.sig"
     r = urllib.request.Request(req, headers={'User-Agent': 'Mozilla/5.0'})
@@ -33,6 +33,7 @@ def download_db(path):
     memfile = urllib.request.urlopen(r).read()
     sig = urllib.request.urlopen(rs).read()
     mfhash = SHA384.new(memfile)
+    key = RSA.import_key(open(keyfile).read())
     pkcs1_15.new(key).verify(mfhash, sig)
     makedirs(path, exist_ok=True)
     f = open(path / "ofmanifest.db", 'wb')
@@ -42,6 +43,7 @@ def download_db(path):
 
 
 def download_file_multi(arr_p):
+    keyfile = Path(arr_p[2])
     prefix = arr_p[1]
     arr = arr_p[0]
     filename = Path(arr[0])
@@ -63,6 +65,7 @@ def download_file_multi(arr_p):
     if new_hash.hexdigest() != hash and hashing == True:
         raise ArithmeticError("HASH INVALID for file {}".format(filename))
     if sig and signing == True:
+        key = RSA.import_key(open(keyfile).read())
         pkcs1_15.new(key).verify(new_hash, sig)
         print("Signature valid!")
     f = open(path, 'wb')
@@ -74,7 +77,7 @@ def download_file_multi(arr_p):
 
 def argvparse():
     global prefix
-    global key
+    global keyfile
     global signing
     global hashing
     global url
@@ -107,7 +110,6 @@ Command line launcher/installer for Open Fortress.
     if '-h' in argv:
         print(uhelp)
         exit(1)
-    key = RSA.import_key(open(keyfile).read())
 
 
 def main():
@@ -130,12 +132,12 @@ def main():
     remote = c.fetchall()
     todl = []
     if nolocal:
-        todl = [[f,str(prefix)] for f in remote]
+        todl = [[f, str(prefix),str(keyfile)] for f in remote]
     else:
         local = cl.execute("select path,checksum,signature from files").fetchall()
         for f in remote:
             if f[1] not in local:
-                todl.append([f,str(prefix)])
+                todl.append([f, str(prefix),str(keyfile)])
     dpool = Pool(nproc)
     dpool.map(download_file_multi, todl)
     cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
