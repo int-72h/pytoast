@@ -13,7 +13,7 @@ setup(
     packages=['ofatomic'],
     python_requires='>=3.4',
     package_data={ 
-        'ofatomic': ['public.pem'],
+        'ofatomic': ['ofpublic.pem'],
     },
     entry_points={ 
         'console_scripts': [
