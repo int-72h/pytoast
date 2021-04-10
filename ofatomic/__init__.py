@@ -136,7 +136,8 @@ def main():
     c.execute("select path,checksum,signature from files")
     remote = c.fetchall()
     todl = []
-    keydata = open(keyfile).read()
+    with open(keyfile,'r') as w:
+        keydata = w.read()
     if nolocal:
         for f in remote:
             if f[2]:
@@ -148,7 +149,7 @@ def main():
         for f in remote:
             if f[1] not in local:
                 if f[2]:
-                    todl.append([f, str(prefix), str(keydata)])
+                    todl.append([f, str(prefix), keydata])
                 else:
                     todl.append([f, str(prefix)])
     dpool = Pool(nproc)
