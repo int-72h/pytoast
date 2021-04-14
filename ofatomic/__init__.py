@@ -118,6 +118,7 @@ Command line launcher/installer for Open Fortress.
 
 def main():
     global keyfile
+    global nproc
     argvparse()
     rpath = prefix / Path('launcher/remote/ofmanifest.db')
     lpath = prefix / Path('launcher/local/ofmanifest.db')
@@ -132,7 +133,7 @@ def main():
         nolocal = False
     conn_l = sqlite3.connect('file:{}'.format(lpath), uri=True)
     c = conn.cursor()
-    cl = conn.cursor()
+    cl = conn_l.cursor()
     c.execute("select path,checksum,signature from files")
     remote = c.fetchall()
     todl = []
@@ -152,8 +153,15 @@ def main():
                     todl.append([f, str(prefix), keydata])
                 else:
                     todl.append([f, str(prefix)])
-    dpool = Pool(nproc)
-    dpool.map(download_file_multi, todl)
+    if nproc > 1:
+        try:
+            dpool = Pool(nproc)
+            dpool.map(download_file_multi, todl)
+        except ImportError:
+            nproc = 1
+    elif nproc <= 1:
+        for p in todl:
+            download_file_multi(p)
     cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
     cl.execute('INSERT OR REPLACE INTO files SELECT * FROM remote.files')
     conn_l.commit()
