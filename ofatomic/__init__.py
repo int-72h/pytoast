@@ -16,6 +16,8 @@ global keyfile
 global signing
 global hashing
 global url
+global mpath
+mpath = Path(__file__).parents[0]
 signing = True
 hashing = True
 prefix = ''
@@ -99,7 +101,7 @@ Command line launcher/installer for Open Fortress.
     if '-k' in argv:
         keyfile = Path(argv[argv.index('-k') + 1])
     else:
-        keyfile = Path("ofpublic.pem")
+        keyfile = mpath / Path("ofpublic.pem")
     if '-n' in argv:
         nproc = int(argv[argv.index('-n') + 1])
     if '--disable-hashing' in argv:
@@ -156,7 +158,7 @@ def main():
     conn_l.commit()
     conn_l.close()
     conn.close()
-    with open("gameinfo.txt", 'r') as gd:
+    with open(mpath / Path("gameinfo.txt"), 'r') as gd:
         gd_l = open(prefix / Path("gameinfo.txt"), 'w')
         gd_l.write(gd.read())
         gd_l.close()

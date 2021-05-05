@@ -12,10 +12,10 @@ PRs are welcome.
 
 ## "Basic" Install instructions
 
-Install instructions are like any other local pip package using `setup.py`:
+Install instructions are like any other local pip package using wheels:
 
 * Download this repo.
-* run `python setup.py install`.
+* run `pip install .`.
 * Now, if pip scripts are in your path, simply running `ofatomic` will invoke the script.
 
 > Note: on Windows, trying to Ctrl-C out of it whilst it's running appears to not play well with multiprocessing, unlike on Unix-like systems.
