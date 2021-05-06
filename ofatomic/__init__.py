@@ -2,6 +2,7 @@ from Crypto.Hash import SHA384
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from multiprocessing import Pool, cpu_count
+from itertools import starmap
 from os import makedirs
 from os.path import exists, getsize
 from sys import argv, exit
@@ -15,6 +16,8 @@ global keyfile
 global signing
 global hashing
 global url
+global mpath
+mpath = Path(__file__).parents[0]
 signing = True
 hashing = True
 prefix = ''
@@ -42,12 +45,8 @@ def download_db(path):
     print("done!")
 
 
-def download_file_multi(arr_p):
-    prefix = arr_p[1]
-    arr = arr_p[0]
-    filename = Path(arr[0])
-    hash = arr[1]
-    sig = arr[2]
+def download_file_multi(path, fhash, sig, prefix, publickey):
+    filename = Path(path)
     req = url + str(PurePosixPath(filename))
     path = prefix / filename
     print(req)
@@ -61,11 +60,10 @@ def download_file_multi(arr_p):
     if memfile:
         memfile = decompress(memfile)
     new_hash = SHA384.new(memfile)
-    if new_hash.hexdigest() != hash and hashing == True:
+    if new_hash.hexdigest() != fhash and hashing == True:
         raise ArithmeticError("HASH INVALID for file {}".format(filename))
     if sig and signing == True:
-        keydata = arr_p[2]
-        key = RSA.import_key(keydata)
+        key = RSA.import_key(publickey)
         pkcs1_15.new(key).verify(new_hash, sig)
         print("Signature valid!")
     f = open(path, 'wb')
@@ -92,18 +90,18 @@ Command line launcher/installer for Open Fortress.
   -h: Displays this help message.
   --disable-hashing: Disables hash checking when downloading.
   --disable-signing: Disables signature checking when downloading."""
-    if len(argv) == 1:
-        print(uhelp)
-        exit()
-    if '-h' in argv:
+    if len(argv) == 1 or '-h' in argv:
         print(uhelp)
         exit()
     if '-p' in argv:
         prefix = Path(argv[argv.index('-p') + 1])
+    else:
+        print("no path!")
+        exit()
     if '-k' in argv:
         keyfile = Path(argv[argv.index('-k') + 1])
     else:
-        keyfile = Path("ofpublic.pem")
+        keyfile = mpath / Path("ofpublic.pem")
     if '-n' in argv:
         nproc = int(argv[argv.index('-n') + 1])
     if '--disable-hashing' in argv:
@@ -137,37 +135,30 @@ def main():
     c.execute("select path,checksum,signature from files")
     remote = c.fetchall()
     todl = []
-    with open(keyfile,'r') as w:
+    with open(keyfile, 'r') as w:
         keydata = w.read()
     if nolocal:
-        for f in remote:
-            if f[2]:
-                todl.append([f, str(prefix), keydata])
-            else:
-                todl.append([f, str(prefix)])
+        todl = [(f[0], f[1], f[2], str(prefix), keydata) for f in remote]
     else:
         local = cl.execute("select path,checksum,signature from files").fetchall()
         for f in remote:
-            if f[1] not in local:
-                if f[2]:
-                    todl.append([f, str(prefix), keydata])
-                else:
-                    todl.append([f, str(prefix)])
+            if f in local:
+                continue
+            todl.append((f[0], f[1], f[2], str(prefix), keydata))
     if nproc > 1:
         try:
             dpool = Pool(nproc)
-            dpool.map(download_file_multi, todl)
+            dpool.starmap(download_file_multi, todl)
         except ImportError:
             nproc = 1
-    elif nproc <= 1:
-        for p in todl:
-            download_file_multi(p)
+    if nproc <= 1:
+        starmap(download_file_multi,todl)
     cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
     cl.execute('INSERT OR REPLACE INTO files SELECT * FROM remote.files')
     conn_l.commit()
     conn_l.close()
     conn.close()
-    with open("gameinfo.txt", 'r') as gd:
+    with open(mpath / Path("gameinfo.txt"), 'r') as gd:
         gd_l = open(prefix / Path("gameinfo.txt"), 'w')
         gd_l.write(gd.read())
         gd_l.close()
