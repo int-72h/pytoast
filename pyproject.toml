@@ -5,3 +5,5 @@ requires = [
     "zstd>=1.0.0.99.1",
     "pycryptodome"
 ]
+[bdist_wheel]
+universal = 1

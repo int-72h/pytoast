@@ -90,14 +90,14 @@ Command line launcher/installer for Open Fortress.
   -h: Displays this help message.
   --disable-hashing: Disables hash checking when downloading.
   --disable-signing: Disables signature checking when downloading."""
-    if len(argv) == 1:
-        print(uhelp)
-        exit()
-    if '-h' in argv:
+    if len(argv) == 1 or '-h' in argv:
         print(uhelp)
         exit()
     if '-p' in argv:
         prefix = Path(argv[argv.index('-p') + 1])
+    else:
+        print("no path!")
+        exit()
     if '-k' in argv:
         keyfile = Path(argv[argv.index('-k') + 1])
     else:
