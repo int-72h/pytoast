@@ -1,10 +1,11 @@
 from setuptools import setup
 import pathlib
+
 here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 setup(
     name='ofatomic',
-    version='210506.2',
+    version='210507.0',
     description='A command line launcher for Open Fortress',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -14,7 +15,10 @@ setup(
     include_package_data=True,
     packages=['ofatomic'],
     python_requires='>=3.4',
-    entry_points={ 
+    install_requires=['pycryptodome~=3.10.1',
+                      'zstd~=1.4.8.1',
+                      'setuptools~=56.0.0'],
+    entry_points={
         'console_scripts': [
             'ofatomic=ofatomic:main',
         ],
