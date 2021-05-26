@@ -12,7 +12,7 @@ PRs are welcome.
 
 ## "Basic" Install instructions
 
-Install instructions are like any other local pip package using wheels:
+Install instructions are like any other local pip package:
 
 * Download this repo.
 * run `pip install -r requirements.txt` inside this repo.
