@@ -16,10 +16,12 @@ global keyfile
 global signing
 global hashing
 global url
+global cfg_write
 global mpath
 mpath = Path(__file__).parents[0]
 signing = True
 hashing = True
+cfg_write = False
 prefix = ''
 keyfile = ''
 nproc = cpu_count()
@@ -80,6 +82,7 @@ def argvparse():
     global hashing
     global url
     global nproc
+    global cfg_write
     uhelp = """\
 Usage: ofatomic -p . [-k (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]
 Command line launcher/installer for Open Fortress.
@@ -89,7 +92,8 @@ Command line launcher/installer for Open Fortress.
   -u: Specifies URL to download from. Specify the protocol (https:// or http://) as well. Default is the OF repository.
   -h: Displays this help message.
   --disable-hashing: Disables hash checking when downloading.
-  --disable-signing: Disables signature checking when downloading."""
+  --disable-signing: Disables signature checking when downloading.
+  --cfg-overwrite: Overwrite existing .cfg files. Off by default."""
     if len(argv) == 1 or '-h' in argv:
         print(uhelp)
         exit()
@@ -108,6 +112,8 @@ Command line launcher/installer for Open Fortress.
         hashing = False
     if '--disable-signing' in argv:
         signing = False
+    if '--cfg-overwrite' in argv:
+        cfg_write = True
     if '-u' in argv:
         url = argv[argv.index('-u') + 1]
         if url[-1:] != '/':
@@ -117,6 +123,8 @@ Command line launcher/installer for Open Fortress.
 def main():
     global keyfile
     global nproc
+    global cfg_write
+    global mpath
     argvparse()
     rpath = prefix / Path('launcher/remote/ofmanifest.db')
     lpath = prefix / Path('launcher/local/ofmanifest.db')
@@ -144,6 +152,9 @@ def main():
         for f in remote:
             if f in local:
                 continue
+            if cfg_write:
+                if f[0] in local and ".cfg" in f[0]:
+                    continue
             todl.append((f[0], f[1], f[2], str(prefix), keydata))
     if nproc > 1:
         try:

@@ -15,7 +15,7 @@ PRs are welcome.
 Install instructions are like any other local pip package:
 
 * Download this repo.
-* run `pip install . --install`.
+* run `pip install -r requirements.txt` inside this repo.
 * Now, if pip scripts are in your path, simply running `ofatomic` will invoke the script.
 
 > Note: on Windows, trying to Ctrl-C out of it whilst it's running appears to not play well with multiprocessing, unlike on Unix-like systems.
