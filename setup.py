@@ -5,7 +5,6 @@ here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 setup(
     name='ofatomic',
-    version='210526.0',
     version='0.5.1',
     description='A command line launcher for Open Fortress',
     long_description=long_description,
@@ -16,9 +15,6 @@ setup(
     include_package_data=True,
     packages=['ofatomic'],
     python_requires='>=3.4',
-    install_requires=['pycryptodome~=3.10.1',
-                      'zstd~=1.4.8.1',
-                      'setuptools~=56.0.0'],
     entry_points={
         'console_scripts': [
             'ofatomic=ofatomic:main',
