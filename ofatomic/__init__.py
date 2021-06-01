@@ -5,7 +5,7 @@ from multiprocessing import Pool, cpu_count
 from itertools import starmap
 from os import makedirs
 from os.path import exists, getsize
-from sys import argv, exit
+from argparse import ArgumentParser
 import sqlite3
 import urllib.request
 from zstd import decompress
@@ -94,31 +94,64 @@ Command line launcher/installer for Open Fortress.
   --disable-hashing: Disables hash checking when downloading.
   --disable-signing: Disables signature checking when downloading.
   --cfg-overwrite: Overwrite existing .cfg files. Off by default."""
-    if len(argv) == 1 or '-h' in argv:
-        print(uhelp)
-        exit()
-    if '-p' in argv:
-        prefix = Path(argv[argv.index('-p') + 1])
-    else:
-        print("no path!")
-        exit()
-    if '-k' in argv:
-        keyfile = Path(argv[argv.index('-k') + 1])
+
+    #
+    parser = ArgumentParser()
+    parser.add_argument("-p",
+                        dest="path",
+                        required=True,
+                        action="store",
+                        type=str,
+                        help="Choose desired path for installation. Mandatory.")
+    parser.add_argument("-k",
+                        dest="key",
+                        action="store",
+                        type=str,
+                        help="Specify public key file to verify signatures against. "
+                             "Default is the current OF public key (ofpublic.pem).")
+    parser.add_argument("-n",
+                        dest="threads",
+                        action="store",
+                        type=int,
+                        help="Amount of threads to be used - choose 1 to disable multithreading. "
+                             "Default is the number of threads in the system.")
+    parser.add_argument("-u",
+                        dest="url",
+                        action="store",
+                        type=str,
+                        help="Specifies URL to download from. "
+                             "Specify the protocol (https:// or http://) as well. "
+                             "Default is the OF repository.")
+
+    parser.add_argument("--disable-hashing",
+                        action="store_false",
+                        help="Disables hash checking when downloading.")
+    parser.add_argument("--disable-signing",
+                        action="store_false",
+                        help="Disables signature checking when downloading.")
+    parser.add_argument("--cfg-overwrite",
+                        action="store_true",
+                        help="Overwrite existing .cfg files. Off by default.")
+
+    args = parser.parse_args()
+    prefix = args.path
+
+    if args.key is not None:
+        keyfile = Path(args.key)
     else:
         keyfile = mpath / Path("ofpublic.pem")
-    if '-n' in argv:
-        nproc = int(argv[argv.index('-n') + 1])
-    if '--disable-hashing' in argv:
-        hashing = False
-    if '--disable-signing' in argv:
-        signing = False
-    if '--cfg-overwrite' in argv:
-        cfg_write = True
-    if '-u' in argv:
-        url = argv[argv.index('-u') + 1]
+
+    if args.threads:
+        nproc = args.threads
+
+    hashing = args.disable_hashing
+    signing = args.disable_signing
+    cfg_write = args.cfg_overwrite
+
+    if args.url is not None:
+        url = args.url
         if url[-1:] != '/':
             url += '/'
-
 
 def main():
     global keyfile
