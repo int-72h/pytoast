@@ -26,7 +26,7 @@ prefix = ''
 keyfile = ''
 nproc = cpu_count()
 url = 'https://svn.openfortress.fun/launcher/files/'
-
+dry_run = False
 
 def download_db(path):
     global keyfile
@@ -35,15 +35,16 @@ def download_db(path):
     r = urllib.request.Request(req, headers={'User-Agent': 'Mozilla/5.0'})
     rs = urllib.request.Request(req_sig, headers={'User-Agent': 'Mozilla/5.0'})
     print("downloading db...")
-    memfile = urllib.request.urlopen(r).read()
-    sig = urllib.request.urlopen(rs).read()
-    mfhash = SHA384.new(memfile)
-    key = RSA.import_key(open(keyfile).read())
-    pkcs1_15.new(key).verify(mfhash, sig)
-    makedirs(path, exist_ok=True)
-    f = open(path / "ofmanifest.db", 'wb')
-    f.write(memfile)
-    f.close()
+    if not dry_run:
+        memfile = urllib.request.urlopen(r).read()
+        sig = urllib.request.urlopen(rs).read()
+        mfhash = SHA384.new(memfile)
+        key = RSA.import_key(open(keyfile).read())
+        pkcs1_15.new(key).verify(mfhash, sig)
+        makedirs(path, exist_ok=True)
+        f = open(path / "ofmanifest.db", 'wb')
+        f.write(memfile)
+        f.close()
     print("done!")
 
 
@@ -83,6 +84,7 @@ def argvparse():
     global url
     global nproc
     global cfg_write
+    global dry_run
     uhelp = """\
 Usage: ofatomic -p . [-k (ofpublic.pem)] [-u (default server url)] [-n 4] [--disable-hashing] [--disable-signing]
 Command line launcher/installer for Open Fortress.
@@ -132,6 +134,9 @@ Command line launcher/installer for Open Fortress.
     parser.add_argument("--cfg-overwrite",
                         action="store_true",
                         help="Overwrite existing .cfg files. Off by default.")
+    parser.add_argument("--dry-run",
+                        action="store_true",
+                        help="Do not actually download anything")
 
     args = parser.parse_args()
     prefix = args.path
@@ -153,6 +158,8 @@ Command line launcher/installer for Open Fortress.
         if url[-1:] != '/':
             url += '/'
 
+    dry_run = args.dry_run
+
 def main():
     global keyfile
     global nproc
@@ -173,7 +180,8 @@ def main():
     conn_l = sqlite3.connect('file:{}'.format(lpath), uri=True)
     c = conn.cursor()
     cl = conn_l.cursor()
-    c.execute("select path,checksum,signature from files")
+    if not dry_run:
+        c.execute("select path,checksum,signature from files")
     remote = c.fetchall()
     todl = []
     with open(keyfile, 'r') as w:
@@ -181,7 +189,9 @@ def main():
     if nolocal:
         todl = [(f[0], f[1], f[2], str(prefix), keydata) for f in remote]
     else:
-        local = cl.execute("select path,checksum,signature from files").fetchall()
+        local = []
+        if not dry_run:
+            local = cl.execute("select path,checksum,signature from files").fetchall()
         for f in remote:
             if f in local:
                 continue
@@ -197,8 +207,9 @@ def main():
             nproc = 1
     if nproc <= 1:
         starmap(download_file_multi,todl)
-    cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
-    cl.execute('INSERT OR REPLACE INTO files SELECT * FROM remote.files')
+    if not dry_run:
+        cl.execute('ATTACH DATABASE "{}" AS remote'.format(rpath))
+        cl.execute('INSERT OR REPLACE INTO files SELECT * FROM remote.files')
     conn_l.commit()
     conn_l.close()
     conn.close()
