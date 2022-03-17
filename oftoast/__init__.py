@@ -1,13 +1,15 @@
 import hashlib
 import lzma
 import argparse
+import json
 import urllib.request
 from os import makedirs
 from multiprocessing import Pool, cpu_count
 from itertools import starmap
-from pathlib import Path
-import json
-def download_file_multi(path,hash):
+from pathlib import Path, PurePosixPath
+
+
+def download_file_multi(path, hash):
     filename = Path(path)
     req = url + str(PurePosixPath(filename))
     path = prefix / filename
@@ -34,19 +36,21 @@ def download_file_multi(path,hash):
     f.close()
     print("File download complete!")
 
+
 def download_db(path):
     req = url + "oftoast.json"
     r = urllib.request.Request(req, headers={'User-Agent': 'IntsMagicToaster/4.2.0'})
     print("downloading db...")
     memfile = urllib.request.urlopen(r).read()
-    if (path/"oftoast.json").exists():
+    if (path / "oftoast.json").exists():
         f = open(path / "oftoast.json", 'r')
         old = f.read()
         f.close()
-        return [memfile,old]
+        return [memfile, old]
     else:
         makedirs(path, exist_ok=True)
-        return [memfile,None]
+        return [memfile, None]
+
 
 def argvparse():
     global prefix
@@ -86,11 +90,13 @@ An installer for Open Fortress - now extra crispy!
     if args.threads:
         nproc = args.threads
     else:
-        nproc = 12
+        nproc = cpu_count()
     if args.url is not None:
         url = args.url
         if url[-1:] != '/':
             url += '/'
+
+
 def main():
     global prefix
     global hashing
@@ -98,28 +104,30 @@ def main():
     global nproc
     argvparse()
     todl = []
-    dbs = download_db_local(prefix,1)
+    dbs = download_db(prefix)
     newdb = json.loads(dbs[0])
     if dbs[1]:
-         oldb = json.loads(dbs[1])
-         for x in oldb:
+        oldb = json.loads(dbs[1])
+        for x in oldb:
             if oldb[x] != newdb[x]:
-                todl.append([x,newdb[x][0]])
+                todl.append([x, newdb[x][0]])
     else:
-        todl = [[x,newdb[x][0]] for x in newdb]
+        todl = [[x, newdb[x][0]] for x in newdb]
     print(todl)
     if nproc > 1:
         try:
             dpool = Pool(nproc)
-            res = dpool.starmap(download_file_multi_local, todl)
+            res = dpool.starmap(download_file_multi, todl)
         except ImportError:
             nproc = 1
     if nproc <= 1:
-        res = starmap(download_file_multi_local,todl)
+        res = starmap(download_file_multi, todl)
     if 1 in res:
         print("download failed somewhere, redownloading suggested")
         return 1
-    g = open(Path(prefix) / "oftoast.json",'w')
+    g = open(Path(prefix) / "oftoast.json", 'w')
     g.write(dbs[0])
     g.close()
+
+
 main()
