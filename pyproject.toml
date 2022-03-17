@@ -1,9 +1,7 @@
 [build-system]
 requires = [
     "setuptools>=42",
-    "wheel",
-    "zstd>=1.0.0.99.1",
-    "pycryptodome"
+    "wheel"
 ]
 [bdist_wheel]
 universal = 1
