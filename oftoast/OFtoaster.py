@@ -16,7 +16,7 @@ def main(newdir,targetdir='.'):
     except:
         oldtable = {}
     jarray = {}
-    for file in iglob(targetdir / '**',recursive=True):
+    for file in iglob(str(targetdir / '**'),recursive=True):
         file = Path(file)
         if Path(file).is_dir():
             continue
