@@ -35,7 +35,7 @@ def main(newdir,targetdir='.'):
                 jarray[file] = [hash, rev]
         except KeyError:
             print('not there')
-            jarray[file] = [hash, 0]
+            jarray[str(file)] = [hash, 0]
         makedirs((newdir / file).parents[0], exist_ok=True)
         n = open((newdir / file),'wb')
         n.write(comp)
