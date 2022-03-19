@@ -26,13 +26,13 @@ def main(newdir,targetdir='.'):
         fi.close()
         hash = hashlib.sha512(comp).hexdigest()
         try:
-            if oldtable[file][0] == hash:
+            if oldtable[str(file)][0] == hash:
                 print('its already there')
-                jarray[file] = oldtable[file]
+                jarray[str(file)] = oldtable[str(file)]
             else:
                 print('its changed')
-                rev = oldtable[file][1] + 1
-                jarray[file] = [hash, rev]
+                rev = oldtable[str(file)][1] + 1
+                jarray[str(file)] = [hash, rev]
         except KeyError:
             print('not there')
             jarray[str(file)] = [hash, 0]
