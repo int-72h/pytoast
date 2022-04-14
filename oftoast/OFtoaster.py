@@ -195,20 +195,22 @@ def main():
 			"changes": replay_changes(revisions)
 		}
 
+	print("Reading from file system...", file=sys.stderr)
 	fscuml = fs_to_accu_changes(srcfs)
+	print("Comparing changes...", file=sys.stderr)
 	changes = compare_cuml_changes(cumlcache["changes"], fscuml)
-	
 	if len(changes) == 0:
 		print("No changes found.", file=sys.stderr)
 		exit(0)
 
+	print("Copying objects...", file=sys.stderr)
 	# Iterate over new revision
 	for x in changes:
 		# Print changes to stdout for piping.
 		if x["type"] is TYPE_WRITE:
 			print("W ", end='')
 		if x["type"] is TYPE_MKDIR:
-			print("F ")
+			print("F ", end='')
 		if x["type"] is TYPE_DELETE:
 			print("D ", end='')
 
