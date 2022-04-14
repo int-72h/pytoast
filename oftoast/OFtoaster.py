@@ -169,9 +169,11 @@ def main():
 	try: 
 		file = open(tvsdir / 'cumlcache', "r")
 		cumlcache = json.load(file)
+		head_version = cumlcache["revision"] + 1
 		file.close()
 	# If it doesn't exist, or it's empty, generate it.
 	except:
+		print("Regenerating the cumulative cache...", file=sys.stderr)
 		(tvsdir / 'cumlcache').touch()
 		i = 0
 		revisions = []
