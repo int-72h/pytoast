@@ -1,5 +1,6 @@
 from typing import TypedDict
 from typing import Union
+from typing import List
 from pathlib import Path
 import urllib
 import json
@@ -54,7 +55,22 @@ def invert_change(change: Change) -> Change:
 		newchange["type"] = 0
 		return newchange
 
+# Returns -1 if nothing is installed.
 def get_installed_revision(dir: Path) -> int:
-	file = open(dir / ".revision", "r")
-	return int(file.read())
+	try: 
+		file = open(dir / '.revision', "r")
+		return int(file.read())
+	except (FileNotFoundError, ValueError):
+		return -1
 
+def fetch_latest_revision(url: str) -> int:
+	r = urllib.request.urlopen(url + "revisions/latest")
+	return int(r.read())
+
+def fetch_revisions(url:str, first: int, last: int) -> list[list[Change]]:
+	revisions: List[Change] = []
+	for x in range(first, last):
+		if not (x < 0):
+			r = urllib.request.urlopen(url + "revisions/" + str(x))
+			revisions.append(json.load(r))
+	return revisions
