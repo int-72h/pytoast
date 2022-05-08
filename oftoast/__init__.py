@@ -26,90 +26,10 @@ sg.LOOK_AND_FEEL_TABLE['MercPurple'] = {'BACKGROUND': '#443785',
                                         'PROGRESS': ('#FFF4E5', '#74675F'),
                                         'BORDER': 1, 'SLIDER_DEPTH': 0,'PROGRESS_DEPTH': 0, }
 sg.theme('MercPurple')
-def pbar_sg(iter,num_cpus=12,bar_length=80):
-    length = len(iter)
-    layout = [[sg.Text('Downloading...'),sg.P(),sg.T(key='file')],
-              [sg.ProgressBar(max_value=length, orientation='h', size=(bar_length,20), key='progress')]]
-    window = sg.Window('OFtoast', layout, finalize=True)
-    progress_bar = window['progress']
-    file = window['file']
-    pool = Pool(num_cpus)
-    map_func = getattr(pool, 'uimap')
-    z = 0
-    for item,it in zip(map_func(download_file_multi, iter),iter):
-        z = z+1
-        file.update(it[0])
-        progress_bar.update(z)
-        yield item
-    pool.clear()
-
-def sbar_sg(iter,bar_length=80):
-    length = len(iter)
-    layout = [[sg.Text('Downloading...'),sg.P(),sg.T(key='file')],
-              [sg.ProgressBar(max_value=length, orientation='h', size=(bar_length,20), key='progress')]]
-    window = sg.Window('OFtoast', layout, finalize=True)
-    progress_bar = window['progress']
-    file = window['file']
-    z = 0
-    for item in iter:
-        t = download_file_multi(item)
-        z = z+1
-        file.update(item[0])
-        progress_bar.update(z)
-        yield t
-    pool.clear()
-
-def download_files(arr: list[Change]):
-    path, hash, local = arr
-    filename = Path(path)
-    path = prefix / filename
-    if not local:
-        req = url + str(PurePosixPath(filename))
-        print(req)
-        try:
-            r = urllib.request.Request(req, headers={'User-Agent': 'oftoast/0.0.1'})
-            u = urllib.request.urlopen(r)
-        except ConnectionResetError:
-            print("Timed out! you're going to have to redownload...")
-            return 1
-    else:
-        u = open(Path(url) / filename,'rb')
-    if str(path.parents[0]) != '.':
-        spath = path.parents[0]
-        makedirs(spath, exist_ok=True)
-    memfile = u.read()
-    u.close()
-    if memfile:
-        new_hash = hashlib.sha512(memfile).hexdigest()
-        memfile = lzma.decompress(memfile)
-        if new_hash != hash:
-            raise ArithmeticError("HASH INVALID for file {}".format(filename))
-    f = open(path, 'wb')
-    f.write(memfile)
-    f.close()
 
 def get_revision(url: str, revision: int) -> list[Change]:
 	r = urllib.request.urlopen(url + "/" + str(revision), headers={'User-Agent': 'oftoast/0.0.1'}).read()
 	return json.loads(r)
-
-def download_db(path,local=False):
-    if not local:
-        req = url + "oftoast.json"
-        r = urllib.request.Request(req, headers={'User-Agent': 'oftoast/0.0.1'})
-        print("downloading db...")
-        memfile = urllib.request.urlopen(r).read()
-    else:
-        f = open(Path(url) / "oftoast.json",'r')
-        memfile = f.read()
-        f.close()
-    if (path / "oftoast.json").exists():
-        f = open(path / "oftoast.json", 'r')
-        old = f.read()
-        f.close()
-        return [memfile, old]
-    else:
-        makedirs(path, exist_ok=True)
-        return [memfile, None]
 
 def gui_loop():
     global prefix
@@ -182,10 +102,7 @@ that may happen if you ignore this warning."""
 
             game_path = Path(values["folder"])
 
-            installed_revision = -1
-
             installed_revision = get_installed_revision(game_path)
-
             latest_revision = fetch_latest_revision(values["url"])
 
             revisions = fetch_revisions(values["url"], installed_revision, latest_revision)
@@ -195,7 +112,6 @@ that may happen if you ignore this warning."""
             temp_path = Path(temp_dir.name)
 
             for x in changes:
-                print(x)
                 if x["type"] == TYPE_WRITE:
                     urllib.request.urlretrieve(values["url"] + "/objects/" + x["object"], temp_path / x["object"])
             
@@ -225,7 +141,6 @@ that may happen if you ignore this warning."""
             window["Update"].update(disabled=False)
             window["Cancel"].update(disabled=False)
             window["browse"].update(disabled=False)
-            
 
 def main():
     global prefix
