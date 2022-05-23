@@ -2,7 +2,7 @@ from typing import TypedDict
 from typing import Union
 from typing import List
 from pathlib import Path
-import urllib
+import urllib.request
 import json
 
 TYPE_WRITE = 0
