@@ -152,7 +152,7 @@ def main():
 
 		cumlcache = {
 			"revision": head_version - 1,
-			"changes": replay_changes(revisions)
+			"changes": replay_changes_nodel(revisions)
 		}
 
 	print("Reading from file system...", file=sys.stderr)
@@ -193,7 +193,7 @@ def main():
 	cache_dir.touch(0o777)
 	cumlcache = {
 		"version": head_version,
-		"changes": replay_changes([cumlcache["changes"], changes])
+		"changes": replay_changes_nodel([cumlcache["changes"], changes])
 	}
 
 	file = open(cache_dir, "w")

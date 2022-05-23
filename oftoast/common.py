@@ -15,17 +15,16 @@ class Change(TypedDict):
 	hash: bytes
 	object: str
 
+def replay_changes_nodel(changesets: list[list[Change]]) -> list[Change]:
+	return list[Change](filter(lambda x: x["type"] != TYPE_DELETE, replay_changes(changesets)))
+
 def replay_changes(changesets: list[list[Change]]) -> list[Change]:
 	cumlmap = {}
 	if changesets == None:
 		return []
 	for revision in changesets:
 		for change in revision:
-			if change["type"] == TYPE_WRITE or TYPE_MKDIR:
-				cumlmap[change["path"]] = change
-			if change["type"] == TYPE_DELETE:
-				cumlmap.pop(change["path"])
-	
+			cumlmap[change["path"]] = change
 	return map_to_changes(cumlmap)
 
 # Convert list of changes to dictonary with path as key,

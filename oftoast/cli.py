@@ -33,7 +33,7 @@ temp_path = Path(temp_dir.name)
 writes = list(filter(lambda x: x["type"] == TYPE_WRITE, changes))
 for x in writes:
     if x["type"] == TYPE_WRITE:
-        print(x["path"])
+        print("WRITE", x["path"])
         urllib.request.urlretrieve(args.u + "/objects/" + x["object"], temp_path / x["object"])
             
 try:
@@ -42,16 +42,19 @@ except FileNotFoundError:
     pass
 
 for x in list(filter(lambda x: x["type"] == TYPE_DELETE, changes)):
+    print("DEL", x["path"])
     try:
         os.remove(game_path / x["path"])
     except FileNotFoundError:
         pass
             
 for x in list(filter(lambda x: x["type"] == TYPE_MKDIR, changes)):
+    print("MKDIR", x["path"])
     try:
-        os.mkdir(game_path / x["path"], 0o777)
-    except FileExistsError:
+        os.remove(game_path / x["path"])
+    except FileNotFoundError:
         pass
+    os.mkdir(game_path / x["path"], 0o777)
             
 for x in writes:
     os.rename(temp_path / x["object"], str(game_path) + "/" + x["path"])
