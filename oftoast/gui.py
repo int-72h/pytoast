@@ -14,6 +14,7 @@ from pathlib import Path, PurePosixPath
 import PySimpleGUI as sg
 from sys import exit
 from common import *
+from shutil import move
 
 
 sg.LOOK_AND_FEEL_TABLE['MercPurple'] = {'BACKGROUND': '#443785',
@@ -110,10 +111,11 @@ that may happen if you ignore this warning."""
             temp_path = Path(temp_dir.name)
 
             writes = list(filter(lambda x: x["type"] == TYPE_WRITE, changes))
-            window["Progress"].update(visible=True, max_value=len(writes))
-            for x in writes:
+            window["Progress"].Update(visible=True)
+            window["Progress"].UpdateBar(0,len(writes))
+            for x,y in zip(writes,range(0,len(writes))):
                 if x["type"] == TYPE_WRITE:
-                    window["Progress"]["value"] += 1
+                    window["Progress"].UpdateBar(y,len(writes))
                     urllib.request.urlretrieve(values["url"] + "/objects/" + x["object"], temp_path / x["object"])
                 window.refresh()
             
@@ -141,7 +143,7 @@ that may happen if you ignore this warning."""
             window.refresh()
 
             for x in writes:
-                os.rename(temp_path / x["object"], str(game_path) + "/" + x["path"])
+                move(temp_path / x["object"], str(game_path) + "/" + x["path"])
             
             (game_path / ".revision").touch(0o777)
             (game_path / ".revision").write_text(str(latest_revision))
@@ -151,6 +153,7 @@ that may happen if you ignore this warning."""
             window["browse"].update(disabled=False)
             
             window["Progress"].update(0)
+            exit()
 
 
 def main():
