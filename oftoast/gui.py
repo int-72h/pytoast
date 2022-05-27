@@ -65,7 +65,8 @@ that may happen if you ignore this warning."""
                                 ],
                                 [
                                     sg.ProgressBar(1, key="Progress")
-                                ]
+                                ],
+                                [sg.T('',key='file')]
                             ] 
                             ,element_justification='c')
 
@@ -116,6 +117,7 @@ that may happen if you ignore this warning."""
             for x,y in zip(writes,range(0,len(writes))):
                 if x["type"] == TYPE_WRITE:
                     window["Progress"].UpdateBar(y,len(writes))
+                    window['file'].Update(x["path"])
                     urllib.request.urlretrieve(values["url"] + "/objects/" + x["object"], temp_path / x["object"])
                 window.refresh()
             
@@ -153,6 +155,7 @@ that may happen if you ignore this warning."""
             window["browse"].update(disabled=False)
             
             window["Progress"].update(0)
+            sg.Window('OFtoast',[[sg.T('Done!')],[sg.B('OK')]]).read(close=True)
             exit()
 
 

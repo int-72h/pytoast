@@ -178,7 +178,7 @@ def main():
 
 		# Populate changes with uuids and copy files to tvs/objects/.
 		if x["type"] is TYPE_WRITE:
-			object_id = str(uuid.uuid1())
+			object_id = str(uuid.uuid4()).replace('-','')
 			shutil.copy2(srcfs / x["path"], tvsdir / 'objects' / object_id)
 			x["object"] = object_id
 
