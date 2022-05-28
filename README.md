@@ -11,3 +11,6 @@
 ## Why the name?
 * One could ask "Why not?"
 
+## Installation instructions
+Just run `pip install .` in the repo root.
+
