@@ -34,7 +34,7 @@
 # "hash" is the md5 hash of the object, used for checking for incidential file
 # corruption and internally for comparing files.
 
-from common import *
+from . import *
 
 from typing import Union
 import os
@@ -177,7 +177,7 @@ def main():
 
 		# Populate changes with uuids and copy files to tvs/objects/.
 		if x["type"] is TYPE_WRITE:
-			object_id = str(uuid.uuid4()).replace('-','')
+			object_id = str(uuid.uuid4()).replace('-','')[:10]
 			shutil.copy2(srcfs / x["path"], tvsdir / 'objects' / object_id)
 			x["object"] = object_id
 
