@@ -8,7 +8,7 @@
 # Typing is used heavily because correctness of objects is a massive concern,
 # and unfortunately Python is a bit flimsy in that regard.
 #
-# The filesyste/format is as follows, assuming "tvs" is the root:
+# The filesystem/format is as follows, assuming "tvs" is the root:
 # 
 # tvs/cumlcache contains a cache of the cumulative changeset of the latest
 # revision. This is used for internal processing, is not a part of the spec, 
@@ -37,7 +37,6 @@
 from common import *
 
 from typing import Union
-import uuid
 import os
 import pathlib
 import shutil
