@@ -68,7 +68,7 @@ def fetch_latest_revision(url: str) -> int:
 
 def fetch_revisions(url:str, first: int, last: int) -> list[list[Change]]:
 	revisions: List[Change] = []
-	for x in range(first, last+1):
+	for x in range(first+1, last+1):
 		if not (x < 0):
 			r = urllib.request.urlopen(url + "revisions/" + str(x))
 			revisions.append(json.load(r))
