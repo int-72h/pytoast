@@ -1,24 +1,15 @@
-from typing import TypedDict
-from typing import Union
-from typing import List
 from pathlib import Path
-import urllib.request
 import json
-
+import httpx
 TYPE_WRITE = 0
 TYPE_MKDIR = 1
 TYPE_DELETE = 2
 
-class Change(TypedDict):
-	type: int
-	path: str
-	hash: bytes
-	object: str
 
-def replay_changes_nodel(changesets: list[list[Change]]) -> list[Change]:
-	return list[Change](filter(lambda x: x["type"] != TYPE_DELETE, replay_changes(changesets)))
+def replay_changes_nodel(changesets):
+	return (filter(lambda x: x["type"] != TYPE_DELETE, replay_changes(changesets)))
 
-def replay_changes(changesets: list[list[Change]]) -> list[Change]:
+def replay_changes(changesets):
 	cumlmap = {}
 	if changesets == None:
 		return []
@@ -29,7 +20,7 @@ def replay_changes(changesets: list[list[Change]]) -> list[Change]:
 
 # Convert list of changes to dictonary with path as key,
 # used for performance reasons.
-def changes_to_map(changes: list[Change]) -> dict[str, Change]:
+def changes_to_map(changes):
 	d = {}
 	if changes == None:
 		return d
@@ -38,13 +29,13 @@ def changes_to_map(changes: list[Change]) -> dict[str, Change]:
 	return d
 
 # Inverse of above.
-def map_to_changes(changes: dict[str, Change]) -> list[Change]:
+def map_to_changes(changes):
 	d = []
 	for key in changes:
 		d.append(changes[key])
 	return d
 
-def invert_change(change: Change) -> Change:
+def invert_change(change):
 	if change["type"] == 0 or 1:
 		newchange = change
 		newchange["type"] = 2
@@ -55,21 +46,23 @@ def invert_change(change: Change) -> Change:
 		return newchange
 
 # Returns -1 if nothing is installed.
-def get_installed_revision(dir: Path) -> int:
+def get_installed_revision(dir):
 	try: 
 		file = open(dir / '.revision', "r")
 		return int(file.read())
 	except (FileNotFoundError, ValueError):
 		return -1
 
-def fetch_latest_revision(url: str) -> int:
-	r = urllib.request.urlopen(url + "revisions/latest")
-	return int(r.read())
+def fetch_latest_revision(url):
+	#r = urllib.request.urlopen()
+	r = httpx.get(url + "revisions/latest")
+	return int(r.text)
 
-def fetch_revisions(url:str, first: int, last: int) -> list[list[Change]]:
-	revisions: List[Change] = []
+def fetch_revisions(url,first,last):
+	revisions = []
 	for x in range(first+1, last+1):
 		if not (x < 0):
-			r = urllib.request.urlopen(url + "revisions/" + str(x))
-			revisions.append(json.load(r))
+			#r = urllib.request.urlopen(url + "revisions/" + str(x))
+			r = httpx.get(url + "revisions/" + str(x))
+			revisions.append(json.loads(r.text))
 	return revisions

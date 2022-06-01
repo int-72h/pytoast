@@ -36,7 +36,6 @@
 
 from . import *
 
-from typing import Union
 import os
 import pathlib
 import shutil
@@ -53,7 +52,7 @@ TYPE_DELETE = 2
 # Compares two cumulative changesets (which is used as a representation of
 # the filesystem) and generates a changeset with the differences between
 # the two.
-def compare_cuml_changes(old: list[Change], new: list[Change]) -> list[Change]:
+def compare_cuml_changes(old,new):
 	oldmap = changes_to_map(old)
 	newmap = changes_to_map(new)
 	changes = []
@@ -70,7 +69,7 @@ def compare_cuml_changes(old: list[Change], new: list[Change]) -> list[Change]:
 	return changes
 
 # Converts a filesystem to a cumulative changelist.
-def fs_to_accu_changes(path: pathlib.PosixPath) -> list[Change]:
+def fs_to_accu_changes(path):
 	changes = []
 	def errhandler(exception):
 		print(exception, file=sys.stderr)
@@ -98,7 +97,7 @@ def fs_to_accu_changes(path: pathlib.PosixPath) -> list[Change]:
 	return changes
 
 
-def read_file(path: Union[str, pathlib.PosixPath]) -> list[Change]:
+def read_file(path):
 	file = open(path, "r")
 	revision = json.load(file)
 	return revision
@@ -177,7 +176,7 @@ def main():
 
 		# Populate changes with uuids and copy files to tvs/objects/.
 		if x["type"] is TYPE_WRITE:
-			object_id = str(uuid.uuid4()).replace('-','')[:10]
+			object_id = str(uuid.uuid4()).replace('-','')
 			shutil.copy2(srcfs / x["path"], tvsdir / 'objects' / object_id)
 			x["object"] = object_id
 
