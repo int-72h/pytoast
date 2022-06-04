@@ -69,13 +69,16 @@ def compare_cuml_changes(old,new):
 	return changes
 
 # Converts a filesystem to a cumulative changelist.
-def fs_to_accu_changes(path):
+def fs_to_accu_changes(path,skiplist):
 	changes = []
 	def errhandler(exception):
 		print(exception, file=sys.stderr)
 		exit(1)
 	for dirpath, directories, files in os.walk(path, onerror=errhandler):
 		for name in files:
+			z = [True if name.find(x) else False for x in skiplist]
+			if True in z:
+				continue
 			b = open(posixpath.join(dirpath,name), 'rb').read()
 			hash = hashlib.md5(b)
 			changes.append({ 
@@ -109,10 +112,11 @@ def print_usage():
 def main():
 	if len(sys.argv) != 3:
 		print_usage()
-
+	skiplist = None
 	tvsdir = pathlib.PosixPath(sys.argv[1])
 	srcfs = pathlib.PosixPath(sys.argv[2])
-	
+	if len(sys.argv) > 3:
+		skiplist = sys.argv[3:]
 	# Make the tvs directories if they don't exist.
 	os.umask(0)
 	os.makedirs(tvsdir / 'objects', 0o777, exist_ok=True)
@@ -154,7 +158,7 @@ def main():
 		}
 
 	print("Reading from file system...", file=sys.stderr)
-	fscuml = fs_to_accu_changes(srcfs)
+	fscuml = fs_to_accu_changes(srcfs,skiplist)
 	print("Comparing changes...", file=sys.stderr)
 	changes = compare_cuml_changes(cumlcache["changes"], fscuml)
 	if len(changes) == 0:
@@ -195,7 +199,7 @@ def main():
 	}
 
 	file = open(cache_dir, "w")
-	json.dump(cumlcache, file)
+	json.dump(list(cumlcache), file)
 
 	(tvsdir / "revisions" / "latest").touch()
 	file = open(tvsdir / "revisions" / "latest", "w")
