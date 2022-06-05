@@ -15,6 +15,7 @@ setup(
     include_package_data=True,
     packages=['tvn'],
     python_requires='>=3.4',
+    install_requires=["httpx"],
     entry_points={
         'console_scripts': [
             'toaster=tvn.toaster:main',
