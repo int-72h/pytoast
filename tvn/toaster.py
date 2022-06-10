@@ -44,6 +44,9 @@ import posixpath
 import sys
 import hashlib
 import json
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import ECC
+from Crypto.Signature import DSS
 
 TYPE_WRITE = 0
 TYPE_MKDIR = 1
@@ -103,14 +106,16 @@ def read_file(path):
 	return revision
 
 def print_usage():
-	print(sys.argv[0] + " <source toasted directory> <game files>", file=sys.stderr)
+	print(sys.argv[0] + " <source toasted directory> <game files> <private key file>", file=sys.stderr)
 	exit(1)
 
 def main():
-	if len(sys.argv) != 3:
+	if len(sys.argv) != 4:
 		print_usage()
 	tvsdir = pathlib.PosixPath(sys.argv[1])
 	srcfs = pathlib.PosixPath(sys.argv[2])
+	key = ECC.import_key(open(pathlib.PosixPath(sys.argv[3])).read())
+	signer = DSS.new(key,'fips-186-3',encoding='der')
 	# Make the tvs directories if they don't exist.
 	os.umask(0)
 	os.makedirs(tvsdir / 'objects', 0o777, exist_ok=True)
@@ -131,7 +136,7 @@ def main():
 		(tvsdir / 'cumlcache').touch()
 		i = 0
 		revisions = []
-		# Read files under tvs/revisions number by number until
+		# Read files under tvn/revisions number by number until
 		# we reach a revision that doesn't exist.
 		while 1 == 1:
 			dir = tvsdir / 'revisions' / str(i)
@@ -183,7 +188,8 @@ def main():
 	new_version_dir.touch(0o777)
 	file = open(new_version_dir, "w")
 	json.dump(changes, file)
-
+	with open(tvsdir / 'revisions' / (str(head_version)+'.sig'),'wb') as file:
+		file.write(signer.sign(SHA256.new(bytes(json.dumps(changes),'utf-8'))))
 	# Update cache
 	cache_dir  = tvsdir / 'cumlcache'
 	cache_dir.touch(0o777)
@@ -197,6 +203,8 @@ def main():
 	(tvsdir / "revisions" / "latest").touch()
 	file = open(tvsdir / "revisions" / "latest", "w")
 	file.write(str(head_version))
-
+	with open(tvsdir / "revisions" / "latest.sig",'wb') as file:
+		file.write(signer.sign(SHA256.new(bytes(str(head_version), 'utf-8'))))
+# Update cache
 if __name__ == "__main__":
 	main()
