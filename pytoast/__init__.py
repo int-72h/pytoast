@@ -7,7 +7,7 @@ TYPE_DELETE = 2
 
 
 def replay_changes_nodel(changesets):
-	return (filter(lambda x: x["type"] != TYPE_DELETE, replay_changes(changesets)))
+	return list(filter(lambda x: x["type"] != TYPE_DELETE, replay_changes(changesets)))
 
 def replay_changes(changesets):
 	cumlmap = {}
@@ -15,7 +15,8 @@ def replay_changes(changesets):
 		return []
 	for revision in changesets:
 		for change in revision:
-			cumlmap[change["path"]] = change
+			if type(change) == dict:
+				cumlmap[change["path"]] = change
 	return map_to_changes(cumlmap)
 
 # Convert list of changes to dictonary with path as key,

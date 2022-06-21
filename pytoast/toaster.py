@@ -44,6 +44,7 @@ import posixpath
 import sys
 import hashlib
 import json
+import tqdm
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import ECC
 from Crypto.Signature import DSS
@@ -77,10 +78,10 @@ def fs_to_accu_changes(path):
 	def errhandler(exception):
 		print(exception, file=sys.stderr)
 		exit(1)
-	for dirpath, directories, files in os.walk(path, onerror=errhandler):
+	for dirpath, directories, files in tqdm.tqdm(os.walk(path, onerror=errhandler)):
 		for name in files:
 			b = open(posixpath.join(dirpath,name), 'rb').read()
-			hash = hashlib.md5(b)
+			hash = hashlib.sha256(b)
 			changes.append({ 
 				"type": TYPE_WRITE,
 				"path": posixpath.relpath(posixpath.join(dirpath,  name), path),
@@ -138,7 +139,7 @@ def main():
 		revisions = []
 		# Read files under tvn/revisions number by number until
 		# we reach a revision that doesn't exist.
-		while 1 == 1:
+		while True:
 			dir = tvsdir / 'revisions' / str(i)
 			if not os.path.isfile(dir):
 				break
@@ -184,6 +185,7 @@ def main():
 			x["object"] = object_id
 
 	# Save new revision
+	changes.append(head_version)
 	new_version_dir = tvsdir / 'revisions' / str(head_version)
 	new_version_dir.touch(0o777)
 	file = open(new_version_dir, "w")
@@ -199,7 +201,7 @@ def main():
 	}
 
 	file = open(cache_dir, "w")
-	json.dump(list(cumlcache), file)
+	json.dump(dict(cumlcache), file)
 	(tvsdir / "revisions" / "latest").touch()
 	file = open(tvsdir / "revisions" / "latest", "w")
 	file.write(str(head_version))
