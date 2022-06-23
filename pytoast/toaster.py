@@ -116,7 +116,7 @@ def main():
 	tvsdir = pathlib.PosixPath(sys.argv[1])
 	srcfs = pathlib.PosixPath(sys.argv[2])
 	key = ECC.import_key(open(pathlib.PosixPath(sys.argv[3])).read())
-	signer = DSS.new(key,'fips-186-3',encoding='der')
+	signer = DSS.new(key,'fips-186-3')
 	# Make the tvs directories if they don't exist.
 	os.umask(0)
 	os.makedirs(tvsdir / 'objects', 0o777, exist_ok=True)
@@ -190,6 +190,7 @@ def main():
 	new_version_dir.touch(0o777)
 	file = open(new_version_dir, "w")
 	json.dump(changes, file)
+	file.close()
 	with open(tvsdir / 'revisions' / (str(head_version)+'.sig'),'wb') as file:
 		file.write(signer.sign(SHA256.new(bytes(json.dumps(changes),'utf-8'))))
 	# Update cache
@@ -205,6 +206,7 @@ def main():
 	(tvsdir / "revisions" / "latest").touch()
 	file = open(tvsdir / "revisions" / "latest", "w")
 	file.write(str(head_version))
+	file.close()
 	with open(tvsdir / "revisions" / "latest.sig",'wb') as file:
 		file.write(signer.sign(SHA256.new(bytes(str(head_version), 'utf-8'))))
 # Update cache

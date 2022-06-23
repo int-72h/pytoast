@@ -1,6 +1,9 @@
 from pathlib import Path
 import json
 import httpx
+from Crypto.Hash import SHA256
+from Crypto.Signature import DSS
+from Crypto.PublicKey import ECC
 TYPE_WRITE = 0
 TYPE_MKDIR = 1
 TYPE_DELETE = 2
@@ -54,16 +57,24 @@ def get_installed_revision(dir):
 	except (FileNotFoundError, ValueError):
 		return -1
 
-def fetch_latest_revision(url):
-	#r = urllib.request.urlopen()
+def fetch_latest_revision(url,key=None):
 	r = httpx.get(url + "revisions/latest")
+	if key:
+			s = httpx.get(url + "revisions/latest.sig")
+			h = SHA256.new(r.text.encode('utf-8'))
+			DSS.new(key, 'fips-186-3').verify(h, s.read())
 	return int(r.text)
 
-def fetch_revisions(url,first,last):
+def fetch_revisions(url,first,last,key=None):
 	revisions = []
 	for x in range(first+1, last+1):
 		if not (x < 0):
 			#r = urllib.request.urlopen(url + "revisions/" + str(x))
 			r = httpx.get(url + "revisions/" + str(x))
-			revisions.append(json.loads(r.text))
+			if key:
+				s = httpx.get(url + "revisions/" + str(x) + '.sig')
+				h = SHA256.new(r.text.encode('utf-8'))
+				DSS.new(key,'fips-186-3').verify(h,s.read())
+			j = json.loads(r.text)
+			revisions.append(j)
 	return revisions
