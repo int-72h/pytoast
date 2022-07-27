@@ -45,9 +45,6 @@ import sys
 import hashlib
 import json
 import tqdm
-from Crypto.Hash import SHA256
-from Crypto.PublicKey import ECC
-from Crypto.Signature import DSS
 
 TYPE_WRITE = 0
 TYPE_MKDIR = 1
@@ -81,7 +78,7 @@ def fs_to_accu_changes(path):
 	for dirpath, directories, files in tqdm.tqdm(os.walk(path, onerror=errhandler)):
 		for name in files:
 			b = open(posixpath.join(dirpath,name), 'rb').read()
-			hash = hashlib.sha256(b)
+			hash = hashlib.md5(b)
 			changes.append({ 
 				"type": TYPE_WRITE,
 				"path": posixpath.relpath(posixpath.join(dirpath,  name), path),
@@ -107,7 +104,7 @@ def read_file(path):
 	return revision
 
 def print_usage():
-	print(sys.argv[0] + " <source toasted directory> <game files> <private key file>", file=sys.stderr)
+	print(sys.argv[0] + " <source toasted directory> <game files>", file=sys.stderr)
 	exit(1)
 
 def main():
@@ -115,8 +112,6 @@ def main():
 		print_usage()
 	tvsdir = pathlib.PosixPath(sys.argv[1])
 	srcfs = pathlib.PosixPath(sys.argv[2])
-	key = ECC.import_key(open(pathlib.PosixPath(sys.argv[3])).read())
-	signer = DSS.new(key,'fips-186-3')
 	# Make the tvs directories if they don't exist.
 	os.umask(0)
 	os.makedirs(tvsdir / 'objects', 0o777, exist_ok=True)
@@ -191,8 +186,6 @@ def main():
 	file = open(new_version_dir, "w")
 	json.dump(changes, file)
 	file.close()
-	with open(tvsdir / 'revisions' / (str(head_version)+'.sig'),'wb') as file:
-		file.write(signer.sign(SHA256.new(bytes(json.dumps(changes),'utf-8'))))
 	# Update cache
 	cache_dir  = tvsdir / 'cumlcache'
 	cache_dir.touch(0o777)
@@ -200,15 +193,12 @@ def main():
 		"version": head_version,
 		"changes": replay_changes_nodel([cumlcache["changes"], changes])
 	}
-
 	file = open(cache_dir, "w")
 	json.dump(dict(cumlcache), file)
 	(tvsdir / "revisions" / "latest").touch()
 	file = open(tvsdir / "revisions" / "latest", "w")
 	file.write(str(head_version))
 	file.close()
-	with open(tvsdir / "revisions" / "latest.sig",'wb') as file:
-		file.write(signer.sign(SHA256.new(bytes(str(head_version), 'utf-8'))))
 # Update cache
 if __name__ == "__main__":
 	main()
