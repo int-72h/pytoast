@@ -45,160 +45,185 @@ import sys
 import hashlib
 import json
 import tqdm
+import zipfile
 
 TYPE_WRITE = 0
 TYPE_MKDIR = 1
 TYPE_DELETE = 2
 
+
 # Compares two cumulative changesets (which is used as a representation of
 # the filesystem) and generates a changeset with the differences between
 # the two.
-def compare_cuml_changes(old,new):
-	oldmap = changes_to_map(old)
-	newmap = changes_to_map(new)
-	changes = []
-	if new is not None:
-		for x in new:
-			if x["path"] not in oldmap or x["path"] != TYPE_MKDIR and oldmap[x["path"]]["hash"] != x["hash"]:
-				changes.append(x)
+def compare_cuml_changes(old, new):
+    oldmap = changes_to_map(old)
+    newmap = changes_to_map(new)
+    changes = []
+    if new is not None:
+        for x in new:
+            if x["path"] not in oldmap or x["path"] != TYPE_MKDIR and oldmap[x["path"]]["hash"] != x["hash"]:
+                changes.append(x)
 
-	if old != None:
-		for x in old:
-			if x["path"] not in newmap:
-				changes.append(invert_change(x))
+    if old != None:
+        for x in old:
+            if x["path"] not in newmap:
+                changes.append(invert_change(x))
 
-	return changes
+    return changes
+
 
 # Converts a filesystem to a cumulative changelist.
 def fs_to_accu_changes(path):
-	changes = []
-	def errhandler(exception):
-		print(exception, file=sys.stderr)
-		exit(1)
-	for dirpath, directories, files in tqdm.tqdm(os.walk(path, onerror=errhandler)):
-		for name in files:
-			b = open(posixpath.join(dirpath,name), 'rb').read()
-			hash = hashlib.md5(b)
-			changes.append({ 
-				"type": TYPE_WRITE,
-				"path": posixpath.relpath(posixpath.join(dirpath,  name), path),
-				"hash": hash.hexdigest(),
-				"object": None
-			})
+    changes = []
 
-		for name in directories:
-			changes.append({
-				"type": TYPE_MKDIR,
-				"path": posixpath.relpath(posixpath.join(dirpath,  name), path),
-				"hash": None,
-				"object": None
-			}
-			)
+    def errhandler(exception):
+        print(exception, file=sys.stderr)
+        exit(1)
 
-	return changes
+    for dirpath, directories, files in tqdm.tqdm(os.walk(path, onerror=errhandler)):
+        for name in files:
+            b = open(posixpath.join(dirpath, name), 'rb').read()
+            hash = hashlib.md5(b)
+            changes.append({
+                "type": TYPE_WRITE,
+                "path": posixpath.relpath(posixpath.join(dirpath, name), path),
+                "hash": hash.hexdigest(),
+                "object": None
+            })
+
+        for name in directories:
+            changes.append({
+                "type": TYPE_MKDIR,
+                "path": posixpath.relpath(posixpath.join(dirpath, name), path),
+                "hash": None,
+                "object": None
+            }
+            )
+
+    return changes
 
 
 def read_file(path):
-	file = open(path, "r")
-	revision = json.load(file)
-	return revision
+    file = open(path, "r")
+    revision = json.load(file)
+    return revision
 
-def print_usage():
-	print(sys.argv[0] + " <source toasted directory> <game files>", file=sys.stderr)
-	exit(1)
 
 def main():
-	if len(sys.argv) != 4:
-		print_usage()
-	tvsdir = pathlib.PosixPath(sys.argv[1])
-	srcfs = pathlib.PosixPath(sys.argv[2])
-	# Make the tvs directories if they don't exist.
-	os.umask(0)
-	os.makedirs(tvsdir / 'objects', 0o777, exist_ok=True)
-	os.makedirs(tvsdir / 'revisions', 0o777, exist_ok=True)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("source",help="The source directory.")
+    parser.add_argument("tvndir",help="The target TVN directory, i.e the files that will be served.")
+    parser.add_argument("-z", "--zip", help="[rei] Generate a zip used for fresh installs.", action="store_true")
+    parser.add_argument("-t", "--tag", help="Arbitrary name (tag) for the revision. Semver reccomended.")
+    args = parser.parse_args()
+    tvsdir = pathlib.PosixPath(args.tvndir)
+    srcfs = pathlib.PosixPath(args.source)
+    # Make the tvs directories if they don't exist.
+    os.umask(0)
+    os.makedirs(tvsdir / 'objects', 0o777, exist_ok=True)
+    os.makedirs(tvsdir / 'revisions', 0o777, exist_ok=True)
 
-	cumlcache = []
-	head_version = 0
+    cumlcache = []
+    head_version = 0
+    write_count = 0
+    # Try to open the cumlcache
+    try:
+        file = open(tvsdir / 'cumlcache', "r")
+        cumlcache = json.load(file)
+        head_version = cumlcache["version"] + 1
+        file.close()
+    # If it doesn't exist, or it's empty, generate it.
+    except FileNotFoundError:
+        print("Regenerating the cumulative cache...", file=sys.stderr)
+        (tvsdir / 'cumlcache').touch()
+        i = 0
+        revisions = []
+        # Read files under tvn/revisions number by number until
+        # we reach a revision that doesn't exist.
+        while True:
+            dir = tvsdir / 'revisions' / str(i)
+            if not os.path.isfile(dir):
+                break
 
-	# Try to open the cumlcache
-	try: 
-		file = open(tvsdir / 'cumlcache', "r")
-		cumlcache = json.load(file)
-		head_version = cumlcache["version"] + 1
-		file.close()
-	# If it doesn't exist, or it's empty, generate it.
-	except FileNotFoundError:
-		print("Regenerating the cumulative cache...", file=sys.stderr)
-		(tvsdir / 'cumlcache').touch()
-		i = 0
-		revisions = []
-		# Read files under tvn/revisions number by number until
-		# we reach a revision that doesn't exist.
-		while True:
-			dir = tvsdir / 'revisions' / str(i)
-			if not os.path.isfile(dir):
-				break
+            revision = read_file(dir)
 
-			revision = read_file(dir)
+            revisions.append(revision)
 
-			revisions.append(revision)
-			
-			i = i + 1
-		
-		head_version = i
+            i = i + 1
 
-		cumlcache = {
-			"revision": head_version - 1,
-			"changes": replay_changes_nodel(revisions)
-		}
+        head_version = i
 
-	print("Reading from file system...", file=sys.stderr)
-	fscuml = fs_to_accu_changes(srcfs)
-	print("Comparing changes...", file=sys.stderr)
-	changes = compare_cuml_changes(cumlcache["changes"], fscuml)
-	if len(changes) == 0:
-		print("No changes found.", file=sys.stderr)
-		exit(0)
+        cumlcache = {
+            "revision": head_version - 1,
+            "changes": replay_changes_nodel(revisions)
+        }
 
-	print("Copying objects...", file=sys.stderr)
-	# Iterate over new revision
-	for x in changes:
-		# Print changes to stdout for piping.
-		if x["type"] is TYPE_WRITE:
-			print("W ", end='')
-		if x["type"] is TYPE_MKDIR:
-			print("F ", end='')
-		if x["type"] is TYPE_DELETE:
-			print("D ", end='')
+    print("Reading from file system...", file=sys.stderr)
+    fscuml = fs_to_accu_changes(srcfs)
+    print("Comparing changes...", file=sys.stderr)
+    changes = compare_cuml_changes(cumlcache["changes"], fscuml)
+    if len(changes) == 0:
+        print("No changes found.", file=sys.stderr)
+        exit(0)
 
-		print(x["path"])
+    print("Copying objects...", file=sys.stderr)
+    # Iterate over new revision
+    for x in changes:
+        # Print changes to stdout for piping.
+        if x["type"] is TYPE_WRITE:
+            print("W ", end='')
+            write_count += 1
+        if x["type"] is TYPE_MKDIR:
+            print("F ", end='')
+        if x["type"] is TYPE_DELETE:
+            print("D ", end='')
 
-		# Populate changes with uuids and copy files to tvs/objects/.
-		if x["type"] is TYPE_WRITE:
-			object_id = str(uuid.uuid4()).replace('-','')
-			shutil.copy2(srcfs / x["path"], tvsdir / 'objects' / object_id)
-			x["object"] = object_id
+        print(x["path"])
 
-	# Save new revision
-	changes.append(head_version)
-	new_version_dir = tvsdir / 'revisions' / str(head_version)
-	new_version_dir.touch(0o777)
-	file = open(new_version_dir, "w")
-	json.dump(changes, file)
-	file.close()
-	# Update cache
-	cache_dir  = tvsdir / 'cumlcache'
-	cache_dir.touch(0o777)
-	cumlcache = {
-		"version": head_version,
-		"changes": replay_changes_nodel([cumlcache["changes"], changes])
-	}
-	file = open(cache_dir, "w")
-	json.dump(dict(cumlcache), file)
-	(tvsdir / "revisions" / "latest").touch()
-	file = open(tvsdir / "revisions" / "latest", "w")
-	file.write(str(head_version))
-	file.close()
+        # Populate changes with uuids and copy files to tvs/objects/.
+        if x["type"] is TYPE_WRITE:
+            object_id = str(uuid.uuid4()).replace('-', '')
+            shutil.copy2(srcfs / x["path"], tvsdir / 'objects' / object_id)
+            x["object"] = object_id
+
+    # Save new revision
+    # changes.append(head_version) what was this line for?!
+    new_version_dir = tvsdir / 'revisions' / str(head_version)
+    new_version_dir.touch(0o777)
+    file = open(new_version_dir, "w")
+    towrite = {
+        "changes": changes,
+        "revision": head_version
+    }
+    if args.tag:
+        towrite["tag"] = args.tag
+    print("Tag: " + args.tag)
+    json.dump(towrite, file)
+    file.close()
+    # Update cache
+    cache_dir = tvsdir / 'cumlcache'
+    cache_dir.touch(0o777)
+    cumlcache = {
+        "version": head_version,
+        "changes": replay_changes_nodel([cumlcache["changes"], changes])
+    }
+    file = open(cache_dir, "w")
+    json.dump(dict(cumlcache), file)
+    (tvsdir / "revisions" / "latest").touch()
+    file = open(tvsdir / "revisions" / "latest", "w")
+    file.write(str(head_version))
+    file.close()
+    if args.zip:  # ok we need to zip from last and latest if this isn't revision zero or one (that'd be the same then.)
+        # target_path = tvsdir / 'rei'/ 'from' / '0' / 'to' / (str(head_version) + ".zip") object zipping at some point
+        target_path = tvsdir  /  "rei" / "latest.zip"
+        os.makedirs(target_path.parents[0], 0o777, exist_ok=True)
+        print("Writing zip...")
+        with zipfile.ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for entry in srcfs.rglob("*"):
+                zip_file.write(entry, entry.relative_to(srcfs))
+
+
 # Update cache
 if __name__ == "__main__":
-	main()
+    main()
